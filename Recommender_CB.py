@@ -31,10 +31,6 @@ class ContentBasedRecommender:
         if self.track_profile_type == 'extended':
             # Construct the required TF-IDF matrix by fitting and transforming the mix attribute
             self.tfidf = vectorizer.fit_transform(self.tracks['mix'])
-            
-        elif self.track_profile_type == 'overview':
-            # Construct the required TF-IDF matrix by fitting and transforming the overview attribute
-            self.tfidf = vectorizer.fit_transform(self.tracks['overview'])
         
         # Get features names (tokens)
         self.feature_names = vectorizer.get_feature_names()
@@ -50,7 +46,7 @@ class ContentBasedRecommender:
 
     #DONE
     def get_track_profiles(self, ids):
-        if ids.size==1:
+        if isinstance(ids,str):
             track_profiles_list = self.get_track_profile(ids)
         else:
             track_profiles_list = [self.get_track_profile(x) for x in ids]
@@ -66,6 +62,8 @@ class ContentBasedRecommender:
         ratings_playlist = positive_ratings.loc[pid]
         
         # 2. Retrieve all track profiles that a given playlist has "rated" as positive, name it playlist_track_profiles
+        #print(ratings_playlist['track_uri'])
+
         playlist_track_profiles = self.get_track_profiles(ratings_playlist['track_uri'])
         
         # 3. Create playlist track ratings in the form of an array, name it playlist_track_ratings
@@ -103,7 +101,7 @@ class ContentBasedRecommender:
         return similar_items
     
     
-    def __init__(self, profile_type='overview'):
+    def __init__(self, profile_type='extended'):
         self.track_profile_type = profile_type
   
     #DONE
