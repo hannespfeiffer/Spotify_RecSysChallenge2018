@@ -10,9 +10,9 @@ class UUCFRecommender:
     
     def create_Ratings_Matrix(self):
         
-        self.track_uris = self.ratings_train_dev.track_uri.unique()
+        self.track_uris = self.ratings_train.track_uri.unique()
         self.track_uris.sort()
-        self.pids = self.ratings_train_dev.pid.unique()
+        self.pids = self.ratings_train.pid.unique()
         self.pids.sort()
         self.m = self.pids.size
         
@@ -23,7 +23,7 @@ class UUCFRecommender:
         self.pid_to_pidX = dict(zip(self.pids, range(0, self.pids.size )))
         self.pidX_to_pid = dict(zip(range(0, self.pids.size), self.pids))
         
-        self.R = sp.csr_matrix((self.ratings_train_dev.rating, (self.ratings_train_dev.pid.map(self.pid_to_pidX), self.ratings_train_dev.track_uri.map(self.track_uri_to_track_uriX))))
+        self.R = sp.csr_matrix((self.ratings_train.rating, (self.ratings_train.pid.map(self.pid_to_pidX), self.ratings_train.track_uri.map(self.track_uri_to_track_uriX))))
         
         self.R_dok = self.R.todok()
     
@@ -132,8 +132,8 @@ class UUCFRecommender:
         self.k = k
   
 
-    def build_model(self, ratings_train_dev, tracks = None):
-        self.ratings_train_dev = ratings_train_dev
+    def build_model(self, ratings_train, tracks = None):
+        self.ratings_train = ratings_train
 
         self.create_Ratings_Matrix()
         self.compute_playlist_avgs()
@@ -143,8 +143,8 @@ class UUCFRecommender:
     def recommend(self, playlist_id, item_ids=None, topN=20):
         
         ########## START HERE ##########
-        ### get a list of track_uris that playlist_id has rated in the ratings_train_dev 
-        tracks_rated_by_playlist = self.ratings_train_dev[self.ratings_train_dev.pid == playlist_id].track_uri.values
+        ### get a list of track_uris that playlist_id has rated in the ratings_train
+        tracks_rated_by_playlist = self.ratings_train[self.ratings_train.pid == playlist_id].track_uri.values
         ##########  END HERE  ##########
         
         u_id = self.pid_to_pidX[playlist_id]
