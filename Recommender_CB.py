@@ -48,6 +48,9 @@ class ContentBasedRecommender:
     def get_track_profiles(self, ids):
         if isinstance(ids,str):
             track_profiles_list = self.get_track_profile(ids)
+        elif isinstance(ids, int):
+            if (ids.size==1):
+                track_profiles_list = self.get_track_profile(ids)
         else:
             track_profiles_list = [self.get_track_profile(x) for x in ids]
 
