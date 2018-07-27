@@ -62,12 +62,12 @@ class UUCFRecommender:
         ########## START HERE ##########
         R_copy = self.R.copy()
 
-        R_copy.data -= np.repeat(self.playlist_avgs, np.diff(R_copy.indptr))  # mean-center
-        R_copy = pp.normalize(R_copy)
+        #R_copy.data -= np.repeat(self.playlist_avgs, np.diff(R_copy.indptr))  # mean-center
+        #R_copy = pp.normalize(R_copy)
 
         u = self.R[u_id, :].copy()
-        u.data -= self.playlist_avgs[u_id]
-        u = pp.normalize(u)
+        #u.data -= self.playlist_avgs[u_id]
+        #u = pp.normalize(u)
 
         uU = np.squeeze(R_copy.dot(u.T).A)
         ##########  END HERE  ##########
@@ -84,8 +84,8 @@ class UUCFRecommender:
         uU_copy = uU.copy() ## so that we can modify it, but also keep the original
 
         ########## START HERE ##########
-        if self.with_abs_sim:
-            uU_copy = np.absolute(uU_copy)
+        #if self.with_abs_sim:
+        #    uU_copy = np.absolute(uU_copy)
 
         idx = np.argsort(uU_copy)
         # only playlists who rated i_id, and not the same playlist u_id
@@ -106,29 +106,31 @@ class UUCFRecommender:
         ########## START HERE ##########
         ### compute numerator and denominator
         denominator = sum(np.absolute(np.array(list(nh.values()))))
-        if self.with_deviations:
-            numerator = sum([(self.R[v_id, i_id] - self.playlist_avgs[v_id]) * w_uv for v_id, w_uv in nh.items()])
-        else:
-            numerator = sum([self.R[v_id, i_id] * w_uv for v_id, w_uv in nh.items()])
+        #if self.with_deviations:
+        #    numerator = sum([(self.R[v_id, i_id] - self.playlist_avgs[v_id]) * w_uv for v_id, w_uv in nh.items()])
+        #else:
+        #    numerator = sum([self.R[v_id, i_id] * w_uv for v_id, w_uv in nh.items()])
+
+        numerator = sum([self.R[v_id, i_id] * w_uv for v_id, w_uv in nh.items()])
         ##########  END HERE  ##########
         
         if denominator != 0: ## avoid division by zero
             neighborhood_weighted_avg = numerator/denominator
         
         
-        if self.with_deviations:
-            prediction = self.playlist_avgs[u_id] + neighborhood_weighted_avg
-#             print("prediction ", prediction, " (playlist_avg ", self.playlist_avgs[u_id], " offset ", neighborhood_weighted_avg, ")", sep="")
-        else:
-            prediction = neighborhood_weighted_avg
-#             print("prediction ", prediction, " (playlist_avg ", self.playlist_avgs[u_id], ")", sep="")
+        #if self.with_deviations:
+        #    prediction = self.playlist_avgs[u_id] + neighborhood_weighted_avg
+        #    print("prediction ", prediction, " (playlist_avg ", self.playlist_avgs[u_id], " offset ", neighborhood_weighted_avg, ")", sep="")
+        #else:
+        prediction = neighborhood_weighted_avg
+        #print("prediction ", prediction, " (playlist_avg ", self.playlist_avgs[u_id], ")", sep="")
 
         return prediction
     
     
-    def __init__(self, with_abs_sim = True, with_deviations = True, k = 50):
-        self.with_abs_sim = with_abs_sim
-        self.with_deviations= with_deviations
+    def __init__(self, k = 50):
+        #self.with_abs_sim = with_abs_sim
+        #self.with_deviations= with_deviations
         self.k = k
   
 
@@ -136,7 +138,7 @@ class UUCFRecommender:
         self.ratings_train = ratings_train
 
         self.create_Ratings_Matrix()
-        self.compute_playlist_avgs()
+        #self.compute_playlist_avgs()
     
 
     ### recommend up to topN items among those in item_ids for playlist_id
