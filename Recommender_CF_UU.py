@@ -10,38 +10,38 @@ class UUCFRecommender:
     
     def create_Ratings_Matrix(self):
         
-        self.movieIds = self.ratings_train.movieId.unique()
-        self.movieIds.sort()
-        self.userIds = self.ratings_train.userId.unique()
-        self.userIds.sort()
-        self.m = self.userIds.size
+        self.track_uris = self.ratings_train_dev.track_uri.unique()
+        self.track_uris.sort()
+        self.pids = self.ratings_train_dev.pid.unique()
+        self.pids.sort()
+        self.m = self.pids.size
         
-        ## movies and users should have consecutive indexes starting from 0
-        self.movieId_to_movieIDX = dict(zip(self.movieIds, range(0, self.movieIds.size)))
-        self.movieIDX_to_movieId = dict(zip(range(0, self.movieIds.size), self.movieIds))
+        ## tracks and playlists should have consecutive indexes starting from 0
+        self.track_uri_to_track_uriX = dict(zip(self.track_uris, range(0, self.track_uris.size)))
+        self.track_uriX_to_track_uri = dict(zip(range(0, self.track_uris.size), self.track_uris))
 
-        self.userId_to_userIDX = dict(zip(self.userIds, range(0, self.userIds.size )))
-        self.userIDX_to_userId = dict(zip(range(0, self.userIds.size), self.userIds))
+        self.pid_to_pidX = dict(zip(self.pids, range(0, self.pids.size )))
+        self.pidX_to_pid = dict(zip(range(0, self.pids.size), self.pids))
         
-        self.R = sp.csr_matrix((self.ratings_train.rating, (self.ratings_train.userId.map(self.userId_to_userIDX), self.ratings_train.movieId.map(self.movieId_to_movieIDX))))
+        self.R = sp.csr_matrix((self.ratings_train_dev.rating, (self.ratings_train_dev.pid.map(self.pid_to_pidX), self.ratings_train_dev.track_uri.map(self.track_uri_to_track_uriX))))
         
         self.R_dok = self.R.todok()
     
     
-    def compute_user_avgs(self):
-        user_sums = self.R.sum(axis=1).A1 ## matrix converted to 1-D array via .A1
-        self.user_cnts = (self.R != 0).sum(axis=1).A1
-        self.user_avgs = user_sums / self.user_cnts
+    def compute_playlist_avgs(self):
+        playlist_sums = self.R.sum(axis=1).A1 ## matrix converted to 1-D array via .A1
+        self.playlist_cnts = (self.R != 0).sum(axis=1).A1
+        self.playlist_avgs = playlist_sums / self.playlist_cnts
     
-    def compute_pairwise_user_similarity(self, u_id, v_id):        
+    def compute_pairwise_playlist_similarity(self, u_id, v_id):        
         
         u = self.R[u_id,:].copy()
         v = self.R[v_id,:].copy()
         
         ### IMPORTANT: Don't forget to prefix non local variables with 'self.'
         ########## START HERE ##########
-        u.data -= self.user_avgs[u_id]
-        v.data -= self.user_avgs[v_id]
+        u.data -= self.playlist_avgs[u_id]
+        v.data -= self.playlist_avgs[v_id]
         numerator = u.dot(v.T).A.item()
         denominator = norm(u) * norm(v)
         ##########  END HERE  ##########
@@ -53,7 +53,7 @@ class UUCFRecommender:
 
         return similarity
     
-    def compute_user_similarities(self, u_id):
+    def compute_playlist_similarities(self, u_id):
         if u_id in self.UU.keys(): ## persist
             return
         
@@ -62,11 +62,11 @@ class UUCFRecommender:
         ########## START HERE ##########
         R_copy = self.R.copy()
 
-        R_copy.data -= np.repeat(self.user_avgs, np.diff(R_copy.indptr))  # mean-center
+        R_copy.data -= np.repeat(self.playlist_avgs, np.diff(R_copy.indptr))  # mean-center
         R_copy = pp.normalize(R_copy)
 
         u = self.R[u_id, :].copy()
-        u.data -= self.user_avgs[u_id]
+        u.data -= self.playlist_avgs[u_id]
         u = pp.normalize(u)
 
         uU = np.squeeze(R_copy.dot(u.T).A)
@@ -75,10 +75,10 @@ class UUCFRecommender:
         self.UU[u_id] = uU
         
     
-    def create_user_neighborhood(self, u_id, i_id):
-        nh = {} ## the neighborhood dict with (user id: similarity) entries
-        ## nh should not contain u_id and only include users that have rated i_id; there should be at most k neighbors
-        self.compute_user_similarities(u_id)
+    def create_playlist_neighborhood(self, u_id, i_id):
+        nh = {} ## the neighborhood dict with (playlist id: similarity) entries
+        ## nh should not contain u_id and only include playlists that have rated i_id; there should be at most k neighbors
+        self.compute_playlist_similarities(u_id)
         uU = self.UU[u_id].copy()
         
         uU_copy = uU.copy() ## so that we can modify it, but also keep the original
@@ -88,7 +88,7 @@ class UUCFRecommender:
             uU_copy = np.absolute(uU_copy)
 
         idx = np.argsort(uU_copy)
-        # only users who rated i_id, and not the same user u_id
+        # only playlists who rated i_id, and not the same playlist u_id
         item_map = np.array([(x, i_id) in self.R_dok and x != u_id for x in idx])
         idx = idx[item_map][-1:-1 * (self.k + 1):-1]  # get last k entries
         nh = dict(zip(idx, uU[idx]))
@@ -99,7 +99,7 @@ class UUCFRecommender:
     
     def predict_rating(self, u_id, i_id):
 
-        nh = self.create_user_neighborhood(u_id, i_id)
+        nh = self.create_playlist_neighborhood(u_id, i_id)
 
         neighborhood_weighted_avg = 0.
 
@@ -107,7 +107,7 @@ class UUCFRecommender:
         ### compute numerator and denominator
         denominator = sum(np.absolute(np.array(list(nh.values()))))
         if self.with_deviations:
-            numerator = sum([(self.R[v_id, i_id] - self.user_avgs[v_id]) * w_uv for v_id, w_uv in nh.items()])
+            numerator = sum([(self.R[v_id, i_id] - self.playlist_avgs[v_id]) * w_uv for v_id, w_uv in nh.items()])
         else:
             numerator = sum([self.R[v_id, i_id] * w_uv for v_id, w_uv in nh.items()])
         ##########  END HERE  ##########
@@ -117,11 +117,11 @@ class UUCFRecommender:
         
         
         if self.with_deviations:
-            prediction = self.user_avgs[u_id] + neighborhood_weighted_avg
-#             print("prediction ", prediction, " (user_avg ", self.user_avgs[u_id], " offset ", neighborhood_weighted_avg, ")", sep="")
+            prediction = self.playlist_avgs[u_id] + neighborhood_weighted_avg
+#             print("prediction ", prediction, " (playlist_avg ", self.playlist_avgs[u_id], " offset ", neighborhood_weighted_avg, ")", sep="")
         else:
             prediction = neighborhood_weighted_avg
-#             print("prediction ", prediction, " (user_avg ", self.user_avgs[u_id], ")", sep="")
+#             print("prediction ", prediction, " (playlist_avg ", self.playlist_avgs[u_id], ")", sep="")
 
         return prediction
     
@@ -132,32 +132,32 @@ class UUCFRecommender:
         self.k = k
   
 
-    def build_model(self, ratings_train, movies = None):
-        self.ratings_train = ratings_train
+    def build_model(self, ratings_train_dev, tracks = None):
+        self.ratings_train_dev = ratings_train_dev
 
         self.create_Ratings_Matrix()
-        self.compute_user_avgs()
+        self.compute_playlist_avgs()
     
 
-    ### recommend up to topN items among those in item_ids for user_id
-    def recommend(self, user_id, item_ids=None, topN=20):
+    ### recommend up to topN items among those in item_ids for playlist_id
+    def recommend(self, playlist_id, item_ids=None, topN=20):
         
         ########## START HERE ##########
-        ### get a list of movieIds that user_id has rated in the ratings_train 
-        movies_rated_by_user = self.ratings_train[self.ratings_train.userId == user_id].movieId.values
+        ### get a list of track_uris that playlist_id has rated in the ratings_train_dev 
+        tracks_rated_by_playlist = self.ratings_train_dev[self.ratings_train_dev.pid == playlist_id].track_uri.values
         ##########  END HERE  ##########
         
-        u_id = self.userId_to_userIDX[user_id]
+        u_id = self.pid_to_pidX[playlist_id]
         
         recommendations = []
         
         if item_ids is None: ## recommend among all items
-            item_ids = self.movieIds
+            item_ids = self.track_uris
         
         for item_id in item_ids:
-            if item_id in movies_rated_by_user:
+            if item_id in tracks_rated_by_playlist:
                 continue
-            i_id = self.movieId_to_movieIDX[item_id]
+            i_id = self.track_uri_to_track_uriX[item_id]
             rating = self.predict_rating(u_id, i_id)
             recommendations.append((item_id, rating))
 
