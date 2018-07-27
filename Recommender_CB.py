@@ -11,12 +11,8 @@ class ContentBasedRecommender:
     #DONE
     def create_mix(self, x):
 
-        #pnames_list = self.ratings_train.loc[self.ratings_train['track_uri'] == x.track_uri][['name']]
-
-        #print(pnames_list)
-
-        #mix = pnames_list
-        mix = [x.artist_name]
+        mix = [x.pids] or []
+        mix.append(x.artist_name)
         mix.append(str(x.duration_ms))
         return " ".join(mix)
 
@@ -31,6 +27,10 @@ class ContentBasedRecommender:
         if self.track_profile_type == 'extended':
             # Construct the required TF-IDF matrix by fitting and transforming the mix attribute
             self.tfidf = vectorizer.fit_transform(self.tracks['mix'])
+
+        elif self.track_profile_type == 'general':
+            # Construct the required TF-IDF matrix by fitting and transforming the overview attribute
+            self.tfidf = vectorizer.fit_transform(self.tracks['pids'])
         
         # Get features names (tokens)
         self.feature_names = vectorizer.get_feature_names()
@@ -104,7 +104,7 @@ class ContentBasedRecommender:
         return similar_items
     
     
-    def __init__(self, profile_type='extended'):
+    def __init__(self, profile_type='general'):
         self.track_profile_type = profile_type
   
     #DONE
