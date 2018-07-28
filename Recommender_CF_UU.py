@@ -22,6 +22,9 @@ class UUCFRecommender:
 
         self.pid_to_pidX = dict(zip(self.pids, range(0, self.pids.size )))
         self.pidX_to_pid = dict(zip(range(0, self.pids.size), self.pids))
+
+        #print(self.pid_to_pidX)
+        #print(self.pidX_to_pid)
         
         self.R = sp.csr_matrix((self.ratings_train.rating, (self.ratings_train.pid.map(self.pid_to_pidX), self.ratings_train.track_uri.map(self.track_uri_to_track_uriX))))
         
@@ -147,6 +150,7 @@ class UUCFRecommender:
         ########## START HERE ##########
         ### get a list of track_uris that playlist_id has rated in the ratings_train
         tracks_rated_by_playlist = self.ratings_train[self.ratings_train.pid == playlist_id].track_uri.values
+        #(tracks_rated_by_playlist)
         ##########  END HERE  ##########
         
         u_id = self.pid_to_pidX[playlist_id]
